@@ -1,37 +1,54 @@
-import websocket
 import json
+import websocket
 
-# Функция для обработки сообщений от WebSocket
+
+# Функция для обработки сообщений
 def on_message(ws, message):
     data = json.loads(message)
-    print("Получено сообщение:", data)
+    print("Order Book Update:")
+    print("Last Update:", data['lastUpdateId'])
+    print("Asks:")
+    for ask in data['asks'][:5]:  # Показываем 5 лучших заявок на продажу
+        print(ask)
+    print("Bids:")
+    for bid in data['bids'][:5]:  # Показываем 5 лучших заявок на покупку
+        print(bid)
+    print("\n")
+
 
 # Функция для обработки ошибок
 def on_error(ws, error):
-    print("Ошибка:", error)
+    print("Error:", error)
 
-# Функция для обработки закрытия соединения
-def on_close(ws, close_status_code, close_msg):
-    print("Соединение закрыто")
 
-# Функция для открытия соединения
+# Функция для обработки начала соединения
 def on_open(ws):
-    print("Соединение открыто")
-    # Здесь можно отправить подписку на данные, если это необходимо
+    print("Connection opened")
+    # Подписываемся на ордербук (например, для пары BTCUSDT)
     subscribe_message = {
-        "method": "subscribe",
-        "subscription": { "type": "l2Book", "coin": "BTC" } }
+        "method": "SUBSCRIBE",
+        "params": [
+            "btcusdt@depth"  # Замените на нужную пару
+        ],
+        "id": 1
+    }
     ws.send(json.dumps(subscribe_message))
 
-# URL WebSocket сервера Hyperliquid
-url = "wss://api.hyperliquid-testnet.xyz/ws"
 
-# WebSocket приложение
-ws = websocket.WebSocketApp(url,
-                            on_message=on_message,
-                            on_error=on_error,
-                            on_close=on_close)
-ws.on_open = on_open
+# Функция для обработки закрытия соединения
+def on_close(ws):
+    print("Connection closed")
 
-# Запуск клиента
-ws.run_forever()
+
+if __name__ == "__main__":
+    # URL для подключения к WebSocket
+    ws_url = "wss://testnet.binance.vision/ws-api/v3"
+
+    # Создание WebSocket клиента
+    ws = websocket.WebSocketApp(ws_url,
+                                on_message=on_message,
+                                on_error=on_error)
+
+    # Метод для запуска WebSocket
+    ws.on_open = on_open
+    ws.run_forever()
