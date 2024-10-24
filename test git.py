@@ -1,17 +1,17 @@
-from binance.client import Client
+import asyncio
+import json
+from binance import AsyncClient
 
-agg_trades = client.aggregate_trade_iter(symbol='ETHBTC', start_str='30 minutes ago UTC')
+async def main():
+    client = await AsyncClient.create()
 
-# iterate over the trade iterator
-for trade in agg_trades:
-    print(trade)
-    # do something with the trade data
+    # fetch exchange info
+    res = await client.get_order_book(symbol='BNBBTC')
+    print(json.dumps(res, indent=2))
 
-# convert the iterator to a list
-# note: generators can only be iterated over once so we need to call it again
-agg_trades = client.aggregate_trade_iter(symbol='ETHBTC', start_str='30 minutes ago UTC')
-agg_trade_list = list(agg_trades)
+    await client.close_connection()
 
-# example using last_id value
-agg_trades = client.aggregate_trade_iter(symbol='ETHBTC', last_id=23380478)
-agg_trade_list = list(agg_trades)
+if __name__ == "__main__":
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
