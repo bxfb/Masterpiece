@@ -8,6 +8,7 @@ async def main():
     # start any sockets here, i.e a trade socket
     ts = bm.depth_socket('ETHUSDT', depth=BinanceSocketManager.WEBSOCKET_DEPTH_5)
     # then start receiving messages
+    # Комментарий
     async with ts as tscm:
         while True:
             res = await tscm.recv()
