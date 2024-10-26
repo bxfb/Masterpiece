@@ -1,13 +1,12 @@
 import asyncio
 import json
-from binance.enums import *
 from binance import AsyncClient, BinanceSocketManager
 
 
 async def OrderBookStream():
     client = await AsyncClient.create()
     bm = BinanceSocketManager(client)
-    ts = bm.depth_socket('ETHUSDT', depth=BinanceSocketManager.WEBSOCKET_DEPTH_5)
+    ts = bm.depth_socket('ETHUSDT', depth=BinanceSocketManager.WEBSOCKET_DEPTH_20)
 
     async with ts as tscm:
         while True:
@@ -108,5 +107,5 @@ async def KlineInfo():
 if __name__ == "__main__":
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(OrderBookRequest())
+    loop.run_until_complete(OrderBookStream())
 
