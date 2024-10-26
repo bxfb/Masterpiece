@@ -1,5 +1,6 @@
 import asyncio
 import json
+from binance.enums import *
 from binance import AsyncClient, BinanceSocketManager
 
 
@@ -71,7 +72,7 @@ async def MiniTickerStream():
 async def OrderBookRequest():
     client = await AsyncClient.create()
 
-    res = await client.get_order_book(symbol='ETHUSDT')
+    res = await client.get_order_book(symbol='ETHUSDT', limit=1000)
     print(json.dumps(res, indent=2))
 
     await client.close_connection()
@@ -105,7 +106,7 @@ async def KlineInfo():
 
 
 if __name__ == "__main__":
-    print("START1")
+
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(OrderBookStream())
+    loop.run_until_complete(OrderBookRequest())
 
