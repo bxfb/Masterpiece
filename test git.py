@@ -76,3 +76,4 @@ def TickerRequest():
 
 if __name__ == "__main__":
     TickerRequest()
+
