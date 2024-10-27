@@ -1,71 +1,42 @@
 import asyncio
 import json
-from binance import AsyncClient, BinanceSocketManager
+import websockets
+from binance import AsyncClient
 
 
 async def OrderBookStream():
-    client = await AsyncClient.create()
-    bm = BinanceSocketManager(client)
-    ts = bm.depth_socket('ETHUSDT', depth=BinanceSocketManager.WEBSOCKET_DEPTH_20)
-
-    async with ts as tscm:
+    url = "wss://stream.binance.com:9443/stream?streams=btcusdt@depth"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            res = await tscm.recv()
-            print(res)
-
-    await client.close_connection()
+            print(json.loads(await ws.recv())['data'])
 
 
 async def KlineStream():
-    client = await AsyncClient.create()
-    bm = BinanceSocketManager(client)
-    ts = bm.kline_socket('ETHUSDT', interval=AsyncClient.KLINE_INTERVAL_1MINUTE)
-
-    async with ts as tscm:
+    url = "wss://stream.binance.com:9443/stream?streams=btcusdt@kline_1m"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            res = await tscm.recv()
-            print(res)
-
-    await client.close_connection()
+            print(json.loads(await ws.recv())['data'])
 
 
 async def TradeStream():
-    client = await AsyncClient.create()
-    bm = BinanceSocketManager(client)
-    ts = bm.trade_socket('ETHUSDT')
-
-    async with ts as tscm:
+    url = "wss://stream.binance.com:9443/stream?streams=btcusdt@trade"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            res = await tscm.recv()
-            print(res)
-
-    await client.close_connection()
+            print(json.loads(await ws.recv())['data'])
 
 
 async def TickerStream():
-    client = await AsyncClient.create()
-    bm = BinanceSocketManager(client)
-    ts = bm.symbol_ticker_socket('ETHUSDT')
-
-    async with ts as tscm:
+    url = "wss://stream.binance.com:9443/stream?streams=btcusdt@ticker"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            res = await tscm.recv()
-            print(res)
-
-    await client.close_connection()
+            print(json.loads(await ws.recv())['data'])
 
 
 async def MiniTickerStream():
-    client = await AsyncClient.create()
-    bm = BinanceSocketManager(client)
-    ts = bm.miniticker_socket()
-
-    async with ts as tscm:
+    url = "wss://stream.binance.com:9443/stream?streams=!miniTicker@arr"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            res = await tscm.recv()
-            print(res)
-
-    await client.close_connection()
+            print(json.loads(await ws.recv())['data'])
 
 
 async def OrderBookRequest():
@@ -106,6 +77,4 @@ async def KlineInfo():
 
 if __name__ == "__main__":
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(OrderBookStream())
-
+    asyncio.run(MiniTickerStream())
