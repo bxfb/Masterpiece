@@ -4,6 +4,13 @@ import websockets
 from binance import AsyncClient
 
 
+async def MultiStream():
+    url = "wss://stream.binance.com:9443/stream?streams=btcusdt@depth"
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
+        while True:
+            print(json.loads(await ws.recv())['data'])
+
+
 async def OrderBookStream():
     url = "wss://stream.binance.com:9443/stream?streams=btcusdt@depth"
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
@@ -18,11 +25,14 @@ async def KlineStream():
             print(json.loads(await ws.recv())['data'])
 
 
-async def TradeStream():
+async def TradeStreamSpot():
     url = "wss://stream.binance.com:9443/stream?streams=btcusdt@trade"
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         while True:
-            print(json.loads(await ws.recv())['data'])
+            price = json.loads(await ws.recv())['data']['p']
+            quantity = json.loads(await ws.recv())['data']['q']
+            buy = json.loads(await ws.recv())['data']['m']
+            return price, quantity, buy
 
 
 async def TickerStream():
@@ -75,6 +85,12 @@ async def KlineInfo():
     await client.close_connection()
 
 
+async def PrintToConsole():
+    while True:
+        price, quantity, buy = await TradeStreamSpot()
+        print(f"{price} {quantity} {buy}")
+
+
 if __name__ == "__main__":
 
-    asyncio.run(MiniTickerStream())
+    asyncio.run(PrintToConsole())
