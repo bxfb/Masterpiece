@@ -44,7 +44,7 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
         async with websockets.connect(bybit_url) as bybit_ws:
             async with websockets.connect(bitget_url) as bitget_ws:
                 await bybit_ws.send(json.dumps(subscriptions['bybit_subscription_message']))
-                await bybit_ws.send(json.dumps(subscriptions['bitget_subscription_message']))
+                await bitget_ws.send(json.dumps(subscriptions['bitget_subscription_message']))
                 while True:
                     binance_msg = json.loads(await binance_ws.recv())
                     bybit_msg = json.loads(await bybit_ws.recv())
