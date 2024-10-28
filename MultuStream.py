@@ -52,7 +52,6 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                     if binance_msg['stream'] == "btcusdt@depth":
                         binance_bids = binance_msg['data']['b']
                         binance_asks = binance_msg['data']['a']
-                        print(binance_asks)
                     elif binance_msg['stream'][:13] == "btcusdt@kline":
                         binance_kline_open_price = binance_msg['data']['k']['o']
                         binance_kline_close_price = binance_msg['data']['k']['c']
