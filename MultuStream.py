@@ -96,29 +96,30 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                         elif bybit_msg['topic'][:11] == "liquidation":
                             bybit_liquidation_size = bybit_msg['data']['size']
                             bybit_liquidation_direction = bybit_msg['data']['side']
-                    if bitget_msg['arg']['channel'][:5] == "books":
-                        bitget_bids = bitget_msg['data'][0]['bids']
-                        bitget_asks = bitget_msg['data'][0]['asks']
-                        print(bitget_asks)
-                    elif bitget_msg['arg']['channel'][:6] == "candle":     # Надо перепроверить какая цена какая
-                        bitget_kline_open_price = bitget_msg['data'][0][1] # Это самая ужасная подача данных которую только можно придумать
-                        bitget_kline_close_price = bitget_msg['data'][0][4]
-                        bitget_kline_high_price = bitget_msg['data'][0][2]
-                        bitget_kline_low_price = bitget_msg['data'][0][3]
-                        bitget_kline_base_asset_volume = bitget_msg['data'][0][5]
-                        print(bitget_kline_base_asset_volume)
-                    elif bitget_msg['arg']['channel'] == "trade":
-                        bitget_trade_price = bitget_msg['data'][0][1]
-                        bitget_trade_quantity = bitget_msg['data'][0][2]
-                        bitget_trade_direction = bitget_msg['data'][0][3]
-                        print(bitget_trade_direction)
-                    elif bitget_msg['arg']['channel'] == "ticker":    # Можно добавить кучу 24 часовых штук + фандинг, открытый интерес и т.д.
-                        bitget_ticker_price = bitget_msg['data'][0]['markPrice']
-                        bitget_ticker_price_change = bitget_msg['data'][0]['chgUTC'] # С 00:00 UTC
-                        bitget_ticker_price_change_percent = bitget_msg['data'][0]['priceChangePercent']
-                        bitget_ticker_open_price = bitget_msg['data'][0]['openUtc'] # С 00:00 UTC
-                        bitget_ticker_last_price = bitget_msg['data'][0]['last']
-                        print(bitget_ticker_last_price)
+                    if 'action' in bitget_msg:
+                        if bitget_msg['arg']['channel'][:5] == "books":
+                            bitget_bids = bitget_msg['data'][0]['bids']
+                            bitget_asks = bitget_msg['data'][0]['asks']
+                            print(bitget_asks)
+                        elif bitget_msg['arg']['channel'][:6] == "candle":     # Надо перепроверить какая цена какая
+                            bitget_kline_open_price = bitget_msg['data'][0][1] # Это самая ужасная подача данных которую только можно придумать
+                            bitget_kline_close_price = bitget_msg['data'][0][4]
+                            bitget_kline_high_price = bitget_msg['data'][0][2]
+                            bitget_kline_low_price = bitget_msg['data'][0][3]
+                            bitget_kline_base_asset_volume = bitget_msg['data'][0][5]
+                            print(bitget_kline_base_asset_volume)
+                        elif bitget_msg['arg']['channel'] == "trade":
+                            bitget_trade_price = bitget_msg['data'][0][1]
+                            bitget_trade_quantity = bitget_msg['data'][0][2]
+                            bitget_trade_direction = bitget_msg['data'][0][3]
+                            print(bitget_trade_direction)
+                        elif bitget_msg['arg']['channel'] == "ticker":    # Можно добавить кучу 24 часовых штук + фандинг, открытый интерес и т.д.
+                            bitget_ticker_price = bitget_msg['data'][0]['markPrice']
+                            bitget_ticker_price_change = bitget_msg['data'][0]['chgUTC'] # С 00:00 UTC
+                            bitget_ticker_price_change_percent = bitget_msg['data'][0]['priceChangePercent']
+                            bitget_ticker_open_price = bitget_msg['data'][0]['openUtc'] # С 00:00 UTC
+                            bitget_ticker_last_price = bitget_msg['data'][0]['last']
+                            print(bitget_ticker_last_price)
 
 
 if __name__ == "__main__":
