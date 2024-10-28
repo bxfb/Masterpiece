@@ -1,8 +1,13 @@
 import asyncio
 import json
 import websockets
+import time
+from Requests import BinanceKlineRequest
 
 
+def check_volaitility(a,b): #ДА,я решил убрать это в функцию. Можно наделать вспомогательных функций и запихать в отдельный файл.
+    if abs(1 - a/b)*100 >= 1:
+        return True
 async def MultiStream(is_futures: bool):     # Размер свечи корректировать вручную
     if is_futures:
         binance_url = "wss://fstream.binance.com/stream?streams=btcusdt@depth/btcusdt@kline_1m/btcusdt@trade/btcusdt@ticker"
@@ -61,7 +66,16 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                     await bybit_ws.send(json.dumps(subscriptions['bybit_subscription_message']))
                     await bitget_ws.send(json.dumps(subscriptions['bitget_subscription_message']))
                     await okx_ws.send(json.dumps(subscriptions['okx_subscription_message']))
+                    print("all APIs ready")
+                    with open("main_data.json", 'r') as file: #Чтоб при выключении программы счетчик не сбивался
+                        old_data = json.load(file)
+                    event_id = old_data[-1]
+                    prev_sec = None
+                    print(event_id)
+                    bybit_total_liq = 0
                     while True:
+                        current_time = time.time()
+                        current_time = time.ctime(current_time)
                         binance_msg = json.loads(await binance_ws.recv())
                         bybit_msg = json.loads(await bybit_ws.recv())
                         bitget_msg = json.loads(await bitget_ws.recv())
@@ -91,7 +105,7 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                             binance_ticker_total_traded_base_asset_volume = binance_msg['data']['v']
                             binance_ticker_total_traded_quote_asset_volume = binance_msg['data']['q']
                         if 'topic' in bybit_msg:
-                            if bybit_msg['topic'][:9] == "orderbook":     # Если придет snapshot возможно нужно все ресетать
+                            if bybit_msg['topic'][:9] == "orderbook":
                                 bybit_bids = bybit_msg['data']['b']
                                 bybit_asks = bybit_msg['data']['a']
                             elif bybit_msg['topic'][:5] == "kline":
@@ -106,7 +120,7 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                                 bybit_trade_quantity = bybit_msg['data'][0]['v']
                                 bybit_trade_direction = bybit_msg['data'][0]['S']
                                 bybit_trade_is_order = bybit_msg['data'][0]['BT']
-                            elif bybit_msg['topic'][:7] == "tickers": # Можно добавить миллион показателей за последние 24 часа
+                            elif bybit_msg['topic'][:7] == "tickers":
                                 if 'lastPrice' in bybit_msg['data']:
                                     bybit_ticker_last_price = bybit_msg['data']['lastPrice']
                             elif bybit_msg['topic'][:11] == "liquidation":
@@ -116,8 +130,8 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                             if bitget_msg['arg']['channel'][:5] == "books":
                                 bitget_bids = bitget_msg['data'][0]['bids']
                                 bitget_asks = bitget_msg['data'][0]['asks']
-                            elif bitget_msg['arg']['channel'][:6] == "candle":     # Надо перепроверить какая цена какая
-                                bitget_kline_open_price = bitget_msg['data'][0][1] # Это самая ужасная подача данных которую только можно придумать
+                            elif bitget_msg['arg']['channel'][:6] == "candle":
+                                bitget_kline_open_price = bitget_msg['data'][0][1]
                                 bitget_kline_close_price = bitget_msg['data'][0][4]
                                 bitget_kline_high_price = bitget_msg['data'][0][2]
                                 bitget_kline_low_price = bitget_msg['data'][0][3]
@@ -126,7 +140,7 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                                 bitget_trade_price = bitget_msg['data'][0][1]
                                 bitget_trade_quantity = bitget_msg['data'][0][2]
                                 bitget_trade_direction = bitget_msg['data'][0][3]
-                            elif bitget_msg['arg']['channel'] == "ticker":    # Можно добавить кучу 24 часовых штук + фандинг, открытый интерес и т.д.
+                            elif bitget_msg['arg']['channel'] == "ticker":
                                 if is_futures:
                                     bitget_ticker_price = bitget_msg['data'][0]['markPrice']
                                     bitget_ticker_price_change_percent = bitget_msg['data'][0]['priceChangePercent']
@@ -145,6 +159,29 @@ async def MultiStream(is_futures: bool):     # Размер свечи корр�
                                 okx_ticker_open_price = okx_msg['data'][0]['sodUtc0'] # С 00:00 UTC
                                 okx_ticker_last_price = okx_msg['data'][0]['last']
                                 okx_ticker_last_quantity = okx_msg['data'][0]['lastSz']
+                        if current_time != prev_sec: #Проверка волатильности каждую секунду, чтоб запросами не спамить
+                            kline_data_5m_1s = BinanceKlineRequest("5m","3")
+                            asset_price = kline_data_5m_1s[2][4] #Я не нашел в твоих доках это, поменяй значения если что
+                            if check_volaitility(kline_data_5m_1s[0][2],kline_data_5m_1s[2][4]):
+                                event_id += 1
+                            bybit_total_liq = bybit_liquidation_size*asset_price #Придумать как учитывать цену
+                            prev_sec = current_time
+                        with open("main_data.json", 'r') as file:
+                            old_data = json.load(file)
+                        if event_id not in old_data: #Проверка на новое событие
+                            with open("main_data.json", 'r') as file:
+                                old_data = json.load(file)
+                            new_data = {
+                                "asset_price": asset_price,
+                                "bybit_liq_1s": bybit_total_liq #Накапливаемое за event
+                                #Сюда дописывать другие параметры... вот только с этим проблема!
+                                #UPD. Проблема решена, допишу завтра
+                            }
+                            if current_time not in old_data:
+                                old_data[event_id][current_time] = new_data
+                                print("new data appeared") #Я проверял, работает ли. А оно просто так перестало)
+                            with open("main_data.json", 'w') as file:
+                                json.dump(old_data, file, indent=4)
 
 
 if __name__ == "__main__":
