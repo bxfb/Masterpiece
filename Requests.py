@@ -13,8 +13,8 @@ def BinanceKlineRequest():
     return requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=500").json()
 
 
-def BinanceFuturesKlineRequest():
-    return requests.get("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1m&limit=500").json()
+def BinanceFuturesKlineRequest(interval,klines_amount):
+    return requests.get(f"https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval={interval}&limit={klines_amount}").json()
 
 
 def BybitOrderBookRequest():
