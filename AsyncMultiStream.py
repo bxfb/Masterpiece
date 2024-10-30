@@ -132,9 +132,9 @@ async def MultiStream(is_futures: bool):
             },
             'okx_subscription_message': {
                 "op": "subscribe",
-                "args": [{"instIType": "FUTURES", "channel": "tickers", "instId": "BTC-USDT"},
-                         {"instIType": "FUTURES", "channel": "trades", "instId": "BTC-USDT"},
-                         {"instIType": "FUTURES", "channel": "books5", "instId": "BTC-USDT"}]
+                "args": [{"instType": "FUTURES", "channel": "tickers", "instId": "BTC-USDT"},
+                         {"instType": "FUTURES", "channel": "trades", "instId": "BTC-USDT"},
+                         {"instType": "FUTURES", "channel": "books5", "instId": "BTC-USDT"}]
             }
         }
     else:
@@ -156,9 +156,9 @@ async def MultiStream(is_futures: bool):
             },
             'okx_subscription_message': {
                 "op": "subscribe",
-                "args": [{"instIType": "SPOT", "channel": "tickers", "instId": "BTC-USDT"},
-                         {"instIType": "SPOT", "channel": "trades", "instId": "BTC-USDT"},
-                         {"instIType": "SPOT", "channel": "books5", "instId": "BTC-USDT"}]
+                "args": [{"instType": "SPOT", "channel": "tickers", "instId": "BTC-USDT"},
+                         {"instType": "SPOT", "channel": "trades", "instId": "BTC-USDT"},
+                         {"instType": "SPOT", "channel": "books5", "instId": "BTC-USDT"}]
             }
         }
 
