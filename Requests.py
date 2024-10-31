@@ -10,7 +10,7 @@ def BinanceFuturesOrderBookRequest():
 
 
 def BinanceKlineRequest():
-    return requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=500").json()
+    return requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=3").json()
 
 
 def BinanceFuturesKlineRequest(interval,klines_amount):

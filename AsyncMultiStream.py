@@ -1,14 +1,38 @@
 import asyncio
 import json
 import websockets
+import requests
+import time
 
-
+#Тот самый реквест для 5м свечей
+def BinanceKlineRequest(inteval):
+    return requests.get(f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit={inteval}").json()
+def volatility(a,b):
+    return abs(1-int(a)/int(b))*100
+#Тут просто глобальные переменые, ибо я не придумал как по другому сделать, не обращай внимания
+with open("main_data.json", 'r') as file:
+    data = json.load(file)
+event_number = 0
+event_flag = False
+liq_1s = 0
+event_liq = 0
+event_large_trades = {}
 async def receive_messages(ws, exchange_name, sub_message, is_futures):
+    global event_number, event_flag
     if sub_message:
         await ws.send(json.dumps(sub_message))
     while True:
-        await asyncio.sleep(0.2)  # Задать скорость получения сообщений (надо почитать лимиты и минимизировать данные)
+        #await asyncio.sleep(0.05)  Задать скорость получения сообщений (надо почитать лимиты и минимизировать данные)
         try:
+            klines_5m_for_signal = BinanceKlineRequest("3")
+            current_time = time.time()
+            formatted_time = time.ctime(current_time)
+            if volatility(klines_5m_for_signal[0][2],klines_5m_for_signal[2][3])>=0.3 or volatility(klines_5m_for_signal[0][3],klines_5m_for_signal[2][2])>=0.3:
+                event_flag = True
+                event_number +=1
+                #Тут все переменные за ивент
+                event_liq = 0
+                event_large_trades = {}
             msg = json.loads(await ws.recv())
             print(f"{exchange_name} message received: {msg}")
 
@@ -54,35 +78,39 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
                         bybit_trade_quantity = msg['data'][0]['v']
                         bybit_trade_direction = msg['data'][0]['S']
                         bybit_trade_is_order = msg['data'][0]['BT']
+                        if bybit_trade_price*bybit_trade_quantity >= 1000000:
+                            event_large_trades[bybit_trade_price*bybit_trade_quantity] = bybit_trade_direction
                     elif msg['topic'][:7] == "tickers":  # Можно добавить миллион показателей за последние 24 часа
                         if 'lastPrice' in msg['data']:
                             bybit_ticker_last_price = msg['data']['lastPrice']
                     elif msg['topic'][:11] == "liquidation":
                         bybit_liquidation_size = msg['data']['size']
+                        event_liq = event_liq + bybit_liquidation_size
+                        liq_1s = liq_1s + bybit_liquidation_size
                         bybit_liquidation_direction = msg['data']['side']
-            if exchange_name == "Bitget":
-                if 'action' in msg:
-                    if msg['arg']['channel'][:5] == "books":
-                        bitget_bids = msg['data'][0]['bids']
-                        bitget_asks = msg['data'][0]['asks']
-                    elif msg['arg']['channel'][:6] == "candle":  # Надо перепроверить какая цена какая
-                        bitget_kline_open_price = msg['data'][0][1]  # Это самая ужасная подача данных которую только можно придумать
-                        bitget_kline_close_price = msg['data'][0][4]
-                        bitget_kline_high_price = msg['data'][0][2]
-                        bitget_kline_low_price = msg['data'][0][3]
-                        bitget_kline_base_asset_volume = msg['data'][0][5]
-                    elif msg['arg']['channel'] == "trade":
-                        bitget_trade_price = msg['data'][0][1]
-                        bitget_trade_quantity = msg['data'][0][2]
-                        bitget_trade_direction = msg['data'][0][3]
-                    elif msg['arg'][
-                        'channel'] == "ticker":  # Можно добавить кучу 24 часовых штук + фандинг, открытый интерес и т.д.
-                        if is_futures:
-                            bitget_ticker_price = msg['data'][0]['markPrice']
-                            bitget_ticker_price_change_percent = msg['data'][0]['priceChangePercent']
-                        bitget_ticker_price_change = msg['data'][0]['chgUTC']  # С 00:00 UTC
-                        bitget_ticker_open_price = msg['data'][0]['openUtc']  # С 00:00 UTC
-                        bitget_ticker_last_price = msg['data'][0]['last']
+            #if exchange_name == "Bitget":
+            #    if 'action' in msg:
+            #        if msg['arg']['channel'][:5] == "books":
+            #            bitget_bids = msg['data'][0]['bids']
+            #            bitget_asks = msg['data'][0]['asks']
+            #        elif msg['arg']['channel'][:6] == "candle":  # Надо перепроверить какая цена какая
+            #            bitget_kline_open_price = msg['data'][0][1]  # Это самая ужасная подача данных которую только можно придумать
+            #            bitget_kline_close_price = msg['data'][0][4]
+            #            bitget_kline_high_price = msg['data'][0][2]
+            #            bitget_kline_low_price = msg['data'][0][3]
+            #            bitget_kline_base_asset_volume = msg['data'][0][5]
+            #        elif msg['arg']['channel'] == "trade":
+            #            bitget_trade_price = msg['data'][0][1]
+            #            bitget_trade_quantity = msg['data'][0][2]
+            #            bitget_trade_direction = msg['data'][0][3]
+            #        elif msg['arg'][
+            #            'channel'] == "ticker":  # Можно добавить кучу 24 часовых штук + фандинг, открытый интерес и т.д.
+            #            if is_futures:
+            #                bitget_ticker_price = msg['data'][0]['markPrice']
+            #                bitget_ticker_price_change_percent = msg['data'][0]['priceChangePercent']
+            #            bitget_ticker_price_change = msg['data'][0]['chgUTC']  # С 00:00 UTC
+            #            bitget_ticker_open_price = msg['data'][0]['openUtc']  # С 00:00 UTC
+            #            bitget_ticker_last_price = msg['data'][0]['last']
             if exchange_name == "OKX":
                 if 'data' in msg:
                     if msg['arg']['channel'][:5] == "books":
@@ -96,11 +124,39 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
                         okx_ticker_open_price = msg['data'][0]['sodUtc0']  # С 00:00 UTC
                         okx_ticker_last_price = msg['data'][0]['last']
                         okx_ticker_last_quantity = msg['data'][0]['lastSz']
+            #Добавляю пустое место под событие
+            with open("main_data.json", 'r') as file:
+                data = json.load(file)
+            if str(event_number) not in data:
+                data[event_number] = {}
+                with open('main_data.json', 'w') as time_file:
+                    json.dump(data, time_file, indent=4)
 
             # Тут можешь писать первичную обработку и скидывать в файл данные
-            # if exchange_name == "Binance":
+            if exchange_name == "Binance":
+                if event_flag == True:
+                    with open("main_data.json", 'r') as file:
+                        data = json.load(file)
+                    if str(formatted_time) not in data[str(event_number)]:
+                        data[str(event_number)][str(formatted_time)] = {
+                            "candle_data":{
+                                "kline_open_price" : binance_kline_open_price,
+                                "kline_close_price" : binance_kline_close_price,
+                                "kline_high_price" : binance_kline_high_price,
+                                "kline_low_price" : binance_kline_low_price,
+                                "kline_base_asset_volume" : binance_kline_base_asset_volume
+                            },
+                            "other_data":{
+                                "large_trades" : event_large_trades,
+                                "event_liqidations" : event_liq,
+                                "1s_liq" : liq_1s
+                                #Остальные по аналогии не долго
+                            },
+                            "orderbook":{}
+                        }
+                        liq_1s = 0
+                        #Все суммы за 1 секунду
             # if exchange_name == "Bybit":
-            # if exchange_name == "Bitget":
             # if exchange_name == "OKX":
 
         except websockets.ConnectionClosed as e:
