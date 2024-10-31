@@ -84,7 +84,7 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
                         bybit_trade_direction = msg['data'][0]['S']
                         bybit_trade_is_order = msg['data'][0]['BT']
                         if bybit_trade_price*bybit_trade_quantity >= 1000000:
-                            event_large_trades[bybit_trade_price*bybit_trade_quantity] = bybit_trade_direction
+                            event_large_trades[float(bybit_trade_price)*float(bybit_trade_quantity)] = bybit_trade_direction
                     elif msg['topic'][:7] == "tickers":  # Можно добавить миллион показателей за последние 24 часа
                         if 'lastPrice' in msg['data']:
                             bybit_ticker_last_price = msg['data']['lastPrice']
