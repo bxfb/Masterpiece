@@ -34,7 +34,7 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
             formatted_time = time.ctime(current_time)
             if volatility(klines_5m_for_signal[0][2],klines_5m_for_signal[2][3])>=0.3 or volatility(klines_5m_for_signal[0][3],klines_5m_for_signal[2][2])>=0.3:
                 event_flag = True
-                event_number +=1
+                event_number += 1
                 #Тут все переменные за ивент
                 event_liq = 0
                 event_large_trades = {}
