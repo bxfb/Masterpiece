@@ -8,7 +8,7 @@ import time
 def BinanceKlineRequest(inteval):
     return requests.get(f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit={inteval}").json()
 def volatility(a,b):
-    return abs(1-int(a)/int(b))*100
+    return abs(1-int(float(a))/int(float(b)))*100
 #Тут просто глобальные переменые, ибо я не придумал как по другому сделать, не обращай внимания
 with open("main_data.json", 'r') as file:
     data = json.load(file)
@@ -18,7 +18,12 @@ liq_1s = 0
 event_liq = 0
 event_large_trades = {}
 async def receive_messages(ws, exchange_name, sub_message, is_futures):
-    global event_number, event_flag
+    global event_number, event_flag, event_large_trades, event_liq, liq_1s
+    binance_kline_open_price = 0
+    binance_kline_close_price = 0
+    binance_kline_high_price = 0
+    binance_kline_low_price = 0
+    binance_kline_base_asset_volume = 0
     if sub_message:
         await ws.send(json.dumps(sub_message))
     while True:
