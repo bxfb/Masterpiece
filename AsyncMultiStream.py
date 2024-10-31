@@ -32,7 +32,7 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
             klines_5m_for_signal = BinanceKlineRequest("3")
             current_time = time.time()
             formatted_time = time.ctime(current_time)
-            if volatility(klines_5m_for_signal[0][2],klines_5m_for_signal[2][3])>=0.3 or volatility(klines_5m_for_signal[0][3],klines_5m_for_signal[2][2])>=0.3:
+            if volatility(klines_5m_for_signal[0][2],klines_5m_for_signal[2][3])>=0.1 or volatility(klines_5m_for_signal[0][3],klines_5m_for_signal[2][2])>=0.1 and event_flag == False:
                 event_flag = True
                 event_number += 1
                 #Тут все переменные за ивент
@@ -84,7 +84,7 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
                         bybit_trade_direction = msg['data'][0]['S']
                         bybit_trade_is_order = msg['data'][0]['BT']
                         if bybit_trade_price*bybit_trade_quantity >= 1000000:
-                            event_large_trades[bybit_trade_price*bybit_trade_quantity] = bybit_trade_direction
+                            event_large_trades[float(bybit_trade_price)*float(bybit_trade_quantity)] = bybit_trade_direction
                     elif msg['topic'][:7] == "tickers":  # Можно добавить миллион показателей за последние 24 часа
                         if 'lastPrice' in msg['data']:
                             bybit_ticker_last_price = msg['data']['lastPrice']
@@ -133,10 +133,12 @@ async def receive_messages(ws, exchange_name, sub_message, is_futures):
             with open("main_data.json", 'r') as file:
                 data = json.load(file)
             if str(event_number) not in data:
-                data[event_number] = {}
+                data[str(event_number)] = {}
                 with open('main_data.json', 'w') as time_file:
                     json.dump(data, time_file, indent=4)
-
+            #Условия выхода из ситуации
+            if len(data) > 30:
+                event_flag = False
             # Тут можешь писать первичную обработку и скидывать в файл данные
             if exchange_name == "Binance":
                 if event_flag == True:
