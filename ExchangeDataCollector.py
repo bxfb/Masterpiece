@@ -43,7 +43,7 @@ class ExchangeDataCollector:
                 break
             except Exception as e:
                 print(f"{exchange_name} Connection Error: {e}")
-                break
+                await asyncio.sleep(1)
 
     async def process_message(self, exchange_name, msg):
         if exchange_name == "Binance":
@@ -106,7 +106,7 @@ class ExchangeDataCollector:
                 bybit_kline_base_asset_volume = msg['data'][0]['volume']
                 bybit_kline_quote_asset_volume = msg['data'][0]['turnover']
                 if self.event_flag:
-                    self.store_data("Binance",
+                    self.store_data("Bybit",
                 {'bybit_kline_open_price': bybit_kline_open_price,
                         'bybit_kline_close_price': bybit_kline_close_price,
                         'bybit_kline_high_price': bybit_kline_high_price,
@@ -179,8 +179,7 @@ class ExchangeDataCollector:
                     "kline_high_price" : klines['binance_kline_high_price'],
                     "kline_low_price" : klines['binance_kline_low_price'],
                     "kline_base_asset_volume" : klines['binance_kline_base_asset_volume']
-                },
-                "orderbook":{}
+                }
             })
         elif exchange == "Bybit" and klines:
             exchange_data.update({
@@ -190,13 +189,11 @@ class ExchangeDataCollector:
                     "kline_high_price" : klines['bybit_kline_high_price'],
                     "kline_low_price" : klines['bybit_kline_low_price'],
                     "kline_base_asset_volume" : klines['bybit_kline_base_asset_volume']
-                },
-                "orderbook":{}
+                }
             })
 
 
         self.data[str(self.event_number)][formatted_time] = exchange_data
-        self.write_to_file()
 
     # def write_to_file(self):
     #     """ Write data to the main_data.json file asynchronously """
@@ -208,10 +205,14 @@ class ExchangeDataCollector:
     #     async with asyncio.to_thread(open, 'main_data.json', 'w') as file:
     #         json.dump(self.data, file, indent=4)
 
-    def write_to_file(self):
+    async def write_to_file(self):
         """ Write data to the main_data.json file asynchronously """
-        with open('main_data.json', 'w') as file:
-            json.dump(self.data, file, indent=4)
+        while True:
+            await asyncio.sleep(5)
+            with open('main_data.json', 'w') as file:
+                json.dump(self.data, file, indent=4)
+            # self.data = {}
+
 
     async def run(self):
         """ Main method to run the websocket connections """
@@ -261,6 +262,7 @@ class ExchangeDataCollector:
                 asyncio.create_task(self.receive_messages(binance_ws, "Binance")),
                 asyncio.create_task(self.receive_messages(bybit_ws, "Bybit")),
                 asyncio.create_task(self.receive_messages(okx_ws, "OKX")),
+                asyncio.create_task(self.write_to_file())
             ]
             await asyncio.gather(*tasks)
 
