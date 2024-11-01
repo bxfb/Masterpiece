@@ -2,6 +2,7 @@ import asyncio
 import json
 import websockets
 import requests
+import sqlite3
 from datetime import datetime, timedelta
 
 
@@ -21,14 +22,35 @@ class ExchangeDataCollector:
         self.bybit_url_spot = "wss://stream.bybit.com/v5/public/spot"
         self.okx_url = "wss://ws.okx.com:8443/ws/v5/public"
 
+        self.conn = sqlite3.connect("market_data.db")
+        self.create_table()
         self.last_kline_check_time = datetime.now()
 
+    def create_table(self):
+        """Create SQLite table to store market data if it doesn't already exist."""
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS market_data (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    exchange TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    event_number INTEGER NOT NULL,
+                    liquidations INTEGER,
+                    large_trades TEXT,
+                    kline_open_price REAL,
+                    kline_close_price REAL,
+                    kline_high_price REAL,
+                    kline_low_price REAL,
+                    kline_base_asset_volume REAL
+                )
+            ''')
+
     @staticmethod
-    async def binance_kline_request(interval):
+    async def binance_kline_request(limit):
         response = await asyncio.to_thread(
             requests.get,
             "https://api.binance.com/api/v3/klines",
-            params={"symbol": "BTCUSDT", "interval": interval, "limit": 100}
+            params={"symbol": "BTCUSDT", "interval": "5m", "limit": limit}
         )
         return response.json()
 
@@ -49,7 +71,7 @@ class ExchangeDataCollector:
                 break
             except Exception as e:
                 print(f"{exchange_name} Connection Error: {e}")
-                await asyncio.sleep(1)
+                # await asyncio.sleep(1)
 
     async def process_message(self, exchange_name, msg):
         if exchange_name == "Binance":
@@ -65,29 +87,22 @@ class ExchangeDataCollector:
             if msg['stream'] == "btcusdt@depth":
                 binance_bids = msg['data']['b']
                 binance_asks = msg['data']['a']
-            elif msg['stream'][:13] == "btcusdt@kline":
-                binance_kline_open_price = msg['data']['k']['o']
-                binance_kline_close_price = msg['data']['k']['c']
-                binance_kline_high_price = msg['data']['k']['h']
-                binance_kline_low_price = msg['data']['k']['l']
-                binance_kline_base_asset_volume = msg['data']['k']['v']
-                binance_kline_quote_asset_volume = msg['data']['k']['q']
-                binance_kline_taker_buy_base_asset_volume = msg['data']['k']['V']
-                binance_kline_taker_buy_quote_asset_volume = msg['data']['k']['Q']
-
+            if msg['stream'][:13] == "btcusdt@kline":
+                kline_data = msg['data']['k']
+                kline = {
+                    'open': kline_data['o'],
+                    'close': kline_data['c'],
+                    'high': kline_data['h'],
+                    'low': kline_data['l'],
+                    'volume': kline_data['v'],
+                }
                 if self.event_flag:
-                    self.store_data("Binance", {
-                        'binance_kline_open_price': binance_kline_open_price,
-                        'binance_kline_close_price': binance_kline_close_price,
-                        'binance_kline_high_price': binance_kline_high_price,
-                        'binance_kline_low_price': binance_kline_low_price,
-                        'binance_kline_base_asset_volume': binance_kline_base_asset_volume,
-                    })
-            elif msg['stream'] == "btcusdt@trade":
+                    self.store_data("Binance", kline)
+            if msg['stream'] == "btcusdt@trade":
                 binance_trade_price = msg['data']['p']
                 binance_trade_quantity = msg['data']['q']
                 binance_trade_direction = msg['data']['m']
-            elif msg['stream'] == "btcusdt@ticker":
+            if msg['stream'] == "btcusdt@ticker":
                 binance_ticker_price_change = msg['data']['p']
                 binance_ticker_price_change_percent = msg['data']['P']
                 binance_ticker_weighted_average_price = msg['data']['w']
@@ -108,28 +123,22 @@ class ExchangeDataCollector:
             if msg['topic'][:9] == "orderbook":
                 bybit_bids = msg['data']['b']
                 bybit_asks = msg['data']['a']
-            elif msg['topic'][:5] == "kline":
-                bybit_kline_open_price = msg['data'][0]['open']
-                bybit_kline_close_price = msg['data'][0]['close']
-                bybit_kline_high_price = msg['data'][0]['high']
-                bybit_kline_low_price = msg['data'][0]['low']
-                bybit_kline_base_asset_volume = msg['data'][0]['volume']
-                bybit_kline_quote_asset_volume = msg['data'][0]['turnover']
-
+            if msg['topic'][:5] == "kline":
+                kline = {
+                    'open': msg['data'][0]['open'],
+                    'close': msg['data'][0]['close'],
+                    'high': msg['data'][0]['high'],
+                    'low': msg['data'][0]['low'],
+                    'volume': msg['data'][0]['volume'],
+                }
                 if self.event_flag:
-                    self.store_data("Bybit", {
-                        'bybit_kline_open_price': bybit_kline_open_price,
-                        'bybit_kline_close_price': bybit_kline_close_price,
-                        'bybit_kline_high_price': bybit_kline_high_price,
-                        'bybit_kline_low_price': bybit_kline_low_price,
-                        'bybit_kline_base_asset_volume': bybit_kline_base_asset_volume,
-                    })
-            elif msg['topic'][:11] == "publicTrade":
+                    self.store_data("Bybit", kline)
+            if msg['topic'][:11] == "publicTrade":
                 bybit_trade_price = msg['data'][0]['p']
                 bybit_trade_quantity = msg['data'][0]['v']
                 bybit_trade_direction = msg['data'][0]['S']
                 bybit_trade_is_order = msg['data'][0]['BT']
-            elif msg['topic'][:11] == "liquidation":
+            if msg['topic'][:11] == "liquidation":
                 bybit_liquidation_size = msg['data']['size']
                 self.event_liq += bybit_liquidation_size
 
@@ -160,51 +169,19 @@ class ExchangeDataCollector:
         else:
             self.event_flag = True
 
-    def store_data(self, exchange, klines):
+    def store_data(self, exchange, kline):
         """ Store data from exchanges into the main data structure """
-        if str(self.event_number) not in self.data:
-            self.data[str(self.event_number)] = {}
+        timestamp = str(datetime.now())
+        large_trades = json.dumps(self.event_large_trades)
 
-        formatted_time = str(datetime.now())
-
-        exchange_data = {
-            "exchange": exchange,
-            "time": formatted_time,
-            "liquidations": self.event_liq,
-            "large_trades": self.event_large_trades,
-        }
-
-        if exchange == "Binance" and klines:
-            exchange_data.update({
-                "candle_data": {
-                    "kline_open_price": klines['binance_kline_open_price'],
-                    "kline_close_price": klines['binance_kline_close_price'],
-                    "kline_high_price": klines['binance_kline_high_price'],
-                    "kline_low_price": klines['binance_kline_low_price'],
-                    "kline_base_asset_volume": klines['binance_kline_base_asset_volume'],
-                }
-            })
-        if exchange == "Bybit" and klines:
-            exchange_data.update({
-                "candle_data": {
-                    "kline_open_price": klines['bybit_kline_open_price'],
-                    "kline_close_price": klines['bybit_kline_close_price'],
-                    "kline_high_price": klines['bybit_kline_high_price'],
-                    "kline_low_price": klines['bybit_kline_low_price'],
-                    "kline_base_asset_volume": klines['bybit_kline_base_asset_volume'],
-                }
-            })
-
-        self.data[str(self.event_number)][formatted_time] = exchange_data
-
-    async def write_to_file(self):
-        """ Write data to the main_data.json file asynchronously """
-        while True:
-            await asyncio.sleep(5)
-            with open('main_data.json', 'w') as file:
-                json.dump(self.data, file, indent=4)
-                self.data = {}
-
+        with self.conn:
+            self.conn.execute('''
+                        INSERT INTO market_data (exchange, timestamp, event_number, liquidations, large_trades, 
+                                                  kline_open_price, kline_close_price, kline_high_price, 
+                                                  kline_low_price, kline_base_asset_volume)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (exchange, timestamp, self.event_number, self.event_liq, large_trades,
+                          kline['open'], kline['close'], kline['high'], kline['low'], kline['volume']))
 
     async def run(self):
         """ Main method to run the websocket connections """
@@ -255,7 +232,6 @@ class ExchangeDataCollector:
                 asyncio.create_task(self.receive_messages(binance_ws, "Binance")),
                 asyncio.create_task(self.receive_messages(bybit_ws, "Bybit")),
                 asyncio.create_task(self.receive_messages(okx_ws, "OKX")),
-                asyncio.create_task(self.write_to_file())
             ]
             await asyncio.gather(*tasks)
 
