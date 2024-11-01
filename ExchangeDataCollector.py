@@ -100,7 +100,7 @@ class ExchangeDataCollector:
             if datetime.now() >= self.last_kline_check_time + timedelta(seconds=30):
                 klines = await self.binance_kline_request("3")
                 self.check_event_flag(klines)
-                self.last_kline_check_time = datetime.now()  # Update the last check time
+                self.last_kline_check_time = datetime.now()
 
     async def process_bybit_message(self, msg):
         """ Process messages coming from Bybit exchange """
@@ -184,7 +184,7 @@ class ExchangeDataCollector:
                     "kline_base_asset_volume": klines['binance_kline_base_asset_volume'],
                 }
             })
-        elif exchange == "Bybit" and klines:
+        if exchange == "Bybit" and klines:
             exchange_data.update({
                 "candle_data": {
                     "kline_open_price": klines['bybit_kline_open_price'],
@@ -203,6 +203,7 @@ class ExchangeDataCollector:
             await asyncio.sleep(5)
             with open('main_data.json', 'w') as file:
                 json.dump(self.data, file, indent=4)
+                self.data = {}
 
 
     async def run(self):
