@@ -69,11 +69,12 @@ class ExchangeDataCollector:
                 binance_kline_taker_buy_base_asset_volume = msg['data']['k']['V']
                 binance_kline_taker_buy_quote_asset_volume = msg['data']['k']['Q']
                 if self.event_flag:
-                    self.store_data("Binance", {'binance_kline_open_price': binance_kline_open_price,
-                                                'binance_kline_close_price': binance_kline_close_price,
-                                                'binance_kline_high_price': binance_kline_high_price,
-                                                'binance_kline_low_price': binance_kline_low_price,
-                                                'binance_kline_base_asset_volume': binance_kline_base_asset_volume})
+                    self.store_data("Binance",
+                {'binance_kline_open_price': binance_kline_open_price,
+                        'binance_kline_close_price': binance_kline_close_price,
+                        'binance_kline_high_price': binance_kline_high_price,
+                        'binance_kline_low_price': binance_kline_low_price,
+                        'binance_kline_base_asset_volume': binance_kline_base_asset_volume})
             elif msg['stream'] == "btcusdt@trade":
                 binance_trade_price = msg['data']['p']
                 binance_trade_quantity = msg['data']['q']
@@ -105,11 +106,12 @@ class ExchangeDataCollector:
                 bybit_kline_base_asset_volume = msg['data'][0]['volume']
                 bybit_kline_quote_asset_volume = msg['data'][0]['turnover']
                 if self.event_flag:
-                    self.store_data("Binance", {'bybit_kline_open_price': bybit_kline_open_price,
-                                                'bybit_kline_close_price': bybit_kline_close_price,
-                                                'bybit_kline_high_price': bybit_kline_high_price,
-                                                'bybit_kline_low_price': bybit_kline_low_price,
-                                                'bybit_kline_base_asset_volume': bybit_kline_base_asset_volume})
+                    self.store_data("Binance",
+                {'bybit_kline_open_price': bybit_kline_open_price,
+                        'bybit_kline_close_price': bybit_kline_close_price,
+                        'bybit_kline_high_price': bybit_kline_high_price,
+                        'bybit_kline_low_price': bybit_kline_low_price,
+                        'bybit_kline_base_asset_volume': bybit_kline_base_asset_volume})
             elif msg['topic'][:11] == "publicTrade":
                 bybit_trade_price = msg['data'][0]['p']
                 bybit_trade_quantity = msg['data'][0]['v']
